@@ -211,7 +211,7 @@ function demoApi() {
 let api;
 async function initApi() {
   if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm");
+    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.99.3/+esm");
     api = supabaseApi(createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
   } else {
     api = demoApi();
