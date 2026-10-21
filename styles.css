@@ -377,6 +377,11 @@ textarea:focus,
   font-size: 26px;
 }
 
+.footer-note a {
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .footer-note {
   text-align: center;
   color: var(--muted);

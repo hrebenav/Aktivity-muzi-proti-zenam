@@ -274,6 +274,7 @@ function stranka_pridat() {
     </section>
 
     <p class="footer-note">Ostatní příspěvky neuvidíš, ať je hra překvapení. 🤫</p>
+    <p class="footer-note"><a href="#/prehled">📊 Kolik už toho máme?</a></p>
   `)
   );
 
