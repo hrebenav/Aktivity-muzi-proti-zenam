@@ -2,15 +2,40 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 
 // ---------- Konstanty ----------
 
+// Ikony (Lucide, MIT)
+const IKONY = {
+  pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+  postava: '<circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M12 10v4"/>',
+  obrazek: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  venus: '<circle cx="12" cy="9" r="6"/><path d="M12 15v7"/><path d="M9 19h6"/>',
+  mars: '<circle cx="10" cy="14" r="6"/><path d="m14.5 9.5 6.5-6.5"/><path d="M15 3h6v6"/>',
+  kostky: '<rect width="12" height="12" x="2" y="10" rx="2" ry="2"/><path d="m17.92 14 3.5-3.5a2.24 2.24 0 0 0 0-3l-5-4.92a2.24 2.24 0 0 0-3 0L10 6"/><path d="M6 18h.01"/><path d="M10 14h.01"/><path d="M15 6h.01"/><path d="M18 9h.01"/>',
+  graf: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  znovu: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  dalsi: '<polygon points="5 4 15 12 5 20 5 4"/><line x1="19" x2="19" y1="5" y2="19"/>',
+  skryto: '<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/>',
+  kos: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
+  foto: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+  zpet: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  pozor: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+};
+
+function ic(nazev) {
+  return `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IKONY[nazev]}</svg>`;
+}
+
+
 const KATEGORIE = {
-  kresleni: { nazev: "Kreslení", ikona: "✏️", co: "nepoužitá slova ke kreslení" },
-  pantomima: { nazev: "Pantomima", ikona: "🎭", co: "nepoužitá slova k předvádění" },
-  popis: { nazev: "Popisování", ikona: "🖼️", co: "nepoužité obrázky k popisu" },
+  kresleni: { nazev: "Kreslení", ikona: ic("pencil"), co: "nepoužitá slova ke kreslení" },
+  pantomima: { nazev: "Pantomima", ikona: ic("postava"), co: "nepoužitá slova k předvádění" },
+  popis: { nazev: "Popisování", ikona: ic("obrazek"), co: "nepoužité obrázky k popisu" },
 };
 
 const TYM = {
-  holky: { nazev: "Holky", ikona: "👩", autor: "kluk" }, // holky hrají to, co přidali kluci
-  kluci: { nazev: "Kluci", ikona: "👨", autor: "holka" },
+  holky: { nazev: "Holky", ikona: ic("venus"), autor: "kluk" }, // holky hrají to, co přidali kluci
+  kluci: { nazev: "Kluci", ikona: ic("mars"), autor: "holka" },
 };
 
 const LS_GENDER = "aktivity.gender";
@@ -238,11 +263,11 @@ function stranka_pridat() {
       <h1>Přidej věci ze ${svet} světa</h1>
       <p class="lead">Všechno, co sem napíšeš, budou kreslit, předvádět a popisovat <strong>${hraji}</strong>.
       Čím víc typicky „${jsemHolka ? "holčičí" : "klukovské"}“, tím větší legrace.</p>
-      <p class="kdo">Jsi ${jsemHolka ? "holka 👩" : "kluk 👨"} · <button class="link" id="zmenit">změnit</button></p>
+      <p class="kdo">Jsi ${jsemHolka ? "holka" : "kluk"} · <button class="link" id="zmenit">změnit</button></p>
     </header>
 
     <section class="karta">
-      <h2>✏️ Kreslení</h2>
+      <h2><span class="dlazdice">${KATEGORIE.kresleni.ikona}</span>Kreslení</h2>
       <p class="hint">Jedno slovo nebo sousloví na řádek. Můžeš jich vložit víc najednou.</p>
       <textarea id="t-kresleni" rows="4" placeholder="Co se bude kreslit…"></textarea>
       <div class="row"><button class="btn tema-${tema}" data-pridat="kresleni">Přidat ke kreslení</button>
@@ -250,7 +275,7 @@ function stranka_pridat() {
     </section>
 
     <section class="karta">
-      <h2>🎭 Pantomima</h2>
+      <h2><span class="dlazdice">${KATEGORIE.pantomima.ikona}</span>Pantomima</h2>
       <p class="hint">Jedno slovo nebo sousloví na řádek. Hodí se činnosti a situace.</p>
       <textarea id="t-pantomima" rows="4" placeholder="Co se bude předvádět…"></textarea>
       <div class="row"><button class="btn tema-${tema}" data-pridat="pantomima">Přidat k pantomimě</button>
@@ -258,12 +283,12 @@ function stranka_pridat() {
     </section>
 
     <section class="karta">
-      <h2>🖼️ Obrázky k popisování</h2>
+      <h2><span class="dlazdice">${KATEGORIE.popis.ikona}</span>Obrázky k popisování</h2>
       <p class="hint">Hráči druhého týmu nejdřív musí poznat, co na obrázku je, a pak to popsat svým.
       Ideální jsou věci, které ${hraji} běžně nepoznají.</p>
       <label class="drop" id="drop">
         <input type="file" id="soubory" accept="image/*" multiple hidden>
-        <span class="drop-ikona">📷</span>
+        <span class="drop-ikona">${ic("foto")}</span>
         <span><strong>Vyber fotky</strong> z telefonu nebo počítače<br>
         <small>nebo je sem přetáhni, případně zkopíruj obrázek z internetu a vlož ho (Ctrl+V)</small></span>
       </label>
@@ -273,8 +298,8 @@ function stranka_pridat() {
       <div class="nahled" id="nahled"></div>
     </section>
 
-    <p class="footer-note">Ostatní příspěvky neuvidíš, ať je hra překvapení. 🤫</p>
-    <p class="footer-note"><a href="#/prehled">📊 Kolik už toho máme?</a></p>
+    <p class="footer-note">Ostatní příspěvky neuvidíš, ať je hra překvapení.</p>
+    <p class="footer-note"><a href="#/prehled">${ic("graf")} Kolik už toho máme?</a></p>
   `)
   );
 
@@ -305,14 +330,14 @@ function stranka_pridat() {
         .split("\n")
         .map((s) => s.replace(/\s+/g, " ").trim().slice(0, 100))
         .filter((s) => s && !videno.has(normalizuj(s)) && videno.add(normalizuj(s)));
-      if (!texty.length) return toast("Napiš aspoň jedno slovo 🙂");
+      if (!texty.length) return toast("Napiš aspoň jedno slovo");
       btn.disabled = true;
       try {
         const pridano = await api.pridejTexty(gender, k, texty);
         const dup = texty.length - pridano;
         ta.value = "";
         zapocti(k, pridano);
-        toast(`Přidáno: ${pridano}` + (dup ? ` · ${dup}× už tam bylo, přeskočeno` : "") + " ✅");
+        toast(`Přidáno: ${pridano}` + (dup ? ` · ${dup}× už tam bylo, přeskočeno` : ""));
       } catch (e) {
         toast("Nepovedlo se uložit: " + e.message);
       } finally {
@@ -325,11 +350,11 @@ function stranka_pridat() {
   const nahled = document.getElementById("nahled");
   const nahraj = async (soubory) => {
     const obrazky = [...soubory].filter((f) => f.type.startsWith("image/"));
-    if (!obrazky.length) return toast("Tohle není obrázek 🤔");
+    if (!obrazky.length) return toast("Tohle není obrázek");
     let ok = 0;
     let dup = 0;
     for (const f of obrazky) {
-      const box = h(`<div class="thumb nahravam"><span>⏳</span></div>`).firstChild;
+      const box = h(`<div class="thumb nahravam"><span class="spinner"></span></div>`).firstChild;
       nahled.prepend(box);
       try {
         const [data, klic] = await Promise.all([zmensiObrazek(f), otisk(f)]);
@@ -337,7 +362,7 @@ function stranka_pridat() {
         if (await api.pridejObrazek(gender, data, klic)) {
           ok++;
           box.classList.remove("nahravam");
-          box.insertAdjacentHTML("beforeend", `<span class="stav">✅</span>`);
+          box.insertAdjacentHTML("beforeend", `<span class="stav">${ic("check")}</span>`);
         } else {
           dup++;
           box.remove();
@@ -348,7 +373,7 @@ function stranka_pridat() {
       }
     }
     if (ok) zapocti("popis", ok);
-    if (ok || dup) toast(`Nahráno: ${ok}` + (dup ? ` · ${dup}× už tam byl, přeskočeno` : "") + " ✅");
+    if (ok || dup) toast(`Nahráno: ${ok}` + (dup ? ` · ${dup}× už tam byl, přeskočeno` : ""));
     // Náhledy necháváme jen chvíli, ať tu nezůstávají na očích
     setTimeout(() => nahled.replaceChildren(), 6000);
   };
@@ -401,8 +426,8 @@ function vyberGender() {
       kluci z ženského. A ty slova a obrázky vymýšlíte vy!</p>
     </header>
     <div class="volba">
-      <button class="velka tema-holky" data-g="holka"><span>👩</span>Holka</button>
-      <button class="velka tema-kluci" data-g="kluk"><span>👨</span>Kluk</button>
+      <button class="velka tema-holky" data-g="holka"><span class="symbol">${ic("venus")}</span>Holka</button>
+      <button class="velka tema-kluci" data-g="kluk"><span class="symbol">${ic("mars")}</span>Kluk</button>
     </div>
   `)
   );
@@ -422,12 +447,12 @@ async function stranka_prehled() {
     <header class="hero">
       <p class="eyebrow">Přehled</p>
       <h1>Kolik toho máme?</h1>
-      <p class="lead">Jen počty, obsah zůstává tajný. Kde je málo, tam popožeň. 😉</p>
+      <p class="lead">Jen počty, obsah zůstává tajný. Kde je málo, tam popožeň.</p>
     </header>
     <div id="pocty" class="pocty"><p class="hint">Načítám…</p></div>
     <nav class="nav">
-      <a class="btn" href="#/hra">🎲 Jdeme hrát</a>
-      <a class="btn sekundarni" href="#/">➕ Přidat slova</a>
+      <a class="btn" href="#/hra">${ic("kostky")} Jdeme hrát</a>
+      <a class="btn sekundarni" href="#/">${ic("plus")} Přidat slova</a>
     </nav>
     <p class="nenapadne"><a href="#/sprava">správa obsahu</a></p>
   `)
@@ -439,7 +464,7 @@ async function stranka_prehled() {
       const holky = autor === "holka";
       return `
         <div class="pocet-karta tema-${holky ? "holky" : "kluci"}">
-          <h2>${holky ? "👩 Holky přidaly" : "👨 Kluci přidali"}</h2>
+          <h2>${ic(holky ? "venus" : "mars")} ${holky ? "Holky přidaly" : "Kluci přidali"}</h2>
           <p class="hint">hrají ${holky ? "kluci" : "holky"}</p>
           ${Object.entries(KATEGORIE)
             .map(([k, kat]) => {
@@ -478,19 +503,19 @@ function stranka_hra() {
         ${Object.entries(TYM)
           .map(
             ([k, t]) =>
-              `<button class="velka tema-${k}${tym === k ? " aktivni" : ""}" data-tym="${k}"><span>${t.ikona}</span>${t.nazev}</button>`
+              `<button class="velka tema-${k}${tym === k ? " aktivni" : ""}" data-tym="${k}"><span class="symbol">${t.ikona}</span>${t.nazev}</button>`
           )
           .join("")}
       </div>
       <h2 class="nadpis-sekce">Na jaké políčko jste stoupli?</h2>
       <div class="policka">
         ${Object.entries(KATEGORIE)
-          .map(([k, kat]) => `<button class="policko" data-kat="${k}"><span>${kat.ikona}</span>${kat.nazev}</button>`)
+          .map(([k, kat]) => `<button class="policko" data-kat="${k}"><span class="dlazdice">${kat.ikona}</span>${kat.nazev}</button>`)
           .join("")}
       </div>
       <nav class="nav">
-        <a class="btn sekundarni" href="#/prehled">📊 Přehled</a>
-        <button class="btn sekundarni" id="nova-hra">🔄 Nová hra</button>
+        <a class="btn sekundarni" href="#/prehled">${ic("graf")} Přehled</a>
+        <button class="btn sekundarni" id="nova-hra">${ic("znovu")} Nová hra</button>
       </nav>
     `)
     );
@@ -511,7 +536,7 @@ function stranka_hra() {
       if (!confirm("Začít novou hru? Všechna už použitá slova a obrázky se vrátí do hry.")) return;
       try {
         await api.novaHra();
-        toast("Nová hra – všechno je zase ve hře 🎉");
+        toast("Nová hra – všechno je zase ve hře");
       } catch (e) {
         toast("Nepovedlo se: " + e.message);
       }
@@ -519,7 +544,7 @@ function stranka_hra() {
   };
 
   const losuj = async (iPouzite = false) => {
-    $app.replaceChildren(h(`<div class="losovani"><div class="kostka">🎲</div><p>Losuju…</p></div>`));
+    $app.replaceChildren(h(`<div class="losovani"><div class="kostka">${ic("kostky")}</div><p>Losuju…</p></div>`));
     try {
       polozka = await api.vylosuj(TYM[tym].autor, kategorie, iPouzite);
     } catch (e) {
@@ -536,7 +561,7 @@ function stranka_hra() {
       $app.replaceChildren(
         h(`
         <div class="karta prazdno">
-          <h2>Došlo to! 😱</h2>
+          <h2>Došlo to!</h2>
           <p>Pro tým <strong>${t.nazev}</strong> už tu nejsou ${kat.co}.
           Ať ${t.autor === "holka" ? "holky" : "kluci"} přidají další, nebo vylosujte z už použitých.</p>
           <div class="row">
@@ -564,9 +589,9 @@ function stranka_hra() {
     $app.replaceChildren(
       h(`
       <div class="tah tema-${tym}">
-        <p class="eyebrow">${t.ikona} ${t.nazev} · ${kat.ikona} ${kat.nazev}</p>
+        <p class="chip">${t.ikona} ${t.nazev} <span class="tecka"></span> ${kat.ikona} ${kat.nazev}</p>
         <button class="zakryto" id="karta">
-          <span class="zakryto-ikona">🙈</span>
+          <span class="zakryto-ikona">${ic("skryto")}</span>
           <strong>Ukaž telefon jen hráči, který je na řadě</strong>
           <span>Klepni pro odkrytí</span>
         </button>
@@ -575,8 +600,8 @@ function stranka_hra() {
           <p class="ukol">${ukol}</p>
         </div>
         <div class="row stred">
-          <button class="btn" id="hotovo">✅ Hotovo</button>
-          <button class="btn sekundarni" id="dalsi">⏭️ Další</button>
+          <button class="btn" id="hotovo">${ic("check")} Hotovo</button>
+          <button class="btn sekundarni" id="dalsi">${ic("dalsi")} Další</button>
         </div>
         <p class="pravidlo">Pravidlo: <strong>„Další“</strong> smíš zmáčknout jen tehdy, když hráč nahlas a zřetelně řekne
         <strong>„Další!“</strong> Jinak platí, co padlo.</p>
@@ -600,7 +625,7 @@ function stranka_sprava() {
   $app.replaceChildren(
     h(`
     <div class="karta varovani">
-      <h2>⚠️ Pozor, spoilery!</h2>
+      <h2>${ic("pozor")} Pozor, spoilery!</h2>
       <p>Tady uvidíš všechna slova a obrázky, které ostatní přidali. Pokud hraješ, možná se nechceš dívat.</p>
       <div class="row">
         <button class="btn" id="ukaz">Ukázat obsah</button>
@@ -627,13 +652,13 @@ async function nactiSpravu() {
       const polozky = rows.filter((r) => r.autor === autor && r.kategorie === k);
       sekce.push(`
         <section class="karta">
-          <h2>${autor === "holka" ? "👩 Od holek" : "👨 Od kluků"} · ${kat.ikona} ${kat.nazev} <small>(${polozky.length})</small></h2>
+          <h2>${autor === "holka" ? "Od holek" : "Od kluků"} · ${kat.nazev} <small>(${polozky.length})</small></h2>
           <ul class="seznam${k === "popis" ? " obrazky" : ""}">
             ${polozky
               .map(
                 (r) => `<li class="${r.pouzito_at ? "pouzito" : ""}">
                   ${k === "popis" ? `<img src="${r.obrazek}" alt="" loading="lazy">` : `<span>${esc(r.text)}</span>`}
-                  <button class="smazat" data-id="${r.id}" title="Smazat">🗑️</button>
+                  <button class="smazat" data-id="${r.id}" title="Smazat" aria-label="Smazat">${ic("kos")}</button>
                 </li>`
               )
               .join("") || `<li class="hint">Nic tu není.</li>`}
