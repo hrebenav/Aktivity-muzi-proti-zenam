@@ -30,7 +30,9 @@ create policy "pridavani" on public.polozky for insert to anon with check (pouzi
 create policy "oznaceni_pouziti" on public.polozky for update to anon using (true) with check (true);
 create policy "mazani" on public.polozky for delete to anon using (true);
 
--- Upravovat jde jen sloupec „pouzito_at“ (slova samotná nikdo přepsat nemůže)
+-- Práva pro veřejnou stránku. Upravovat jde jen sloupec „pouzito_at“ (slova samotná nikdo přepsat nemůže)
+grant usage on schema public to anon;
+grant select, insert, delete on public.polozky to anon;
 revoke update on public.polozky from anon;
 grant update (pouzito_at) on public.polozky to anon;
 
