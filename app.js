@@ -38,6 +38,10 @@ const TYM = {
   kluci: { nazev: "Kluci", ikona: ic("mars"), autor: "holka" },
 };
 
+// Tlačítko „Jdeme hrát“ v přehledu. Před hrou skryté, ať si lidi losování nezkouší
+// (hra je dál dostupná přímo na adrese #/hra).
+const UKAZAT_HRU = false;
+
 const LS_GENDER = "aktivity.gender";
 const LS_MOJE = "aktivity.mojePocty";
 const LS_TYM = "aktivity.tymNaTahu";
@@ -451,7 +455,7 @@ async function stranka_prehled() {
     </header>
     <div id="pocty" class="pocty"><p class="hint">Načítám…</p></div>
     <nav class="nav">
-      <a class="btn" href="#/hra">${ic("kostky")} Jdeme hrát</a>
+      ${UKAZAT_HRU ? `<a class="btn" href="#/hra">${ic("kostky")} Jdeme hrát</a>` : ""}
       <a class="btn sekundarni" href="#/">${ic("plus")} Přidat slova</a>
     </nav>
     <p class="nenapadne"><a href="#/sprava">správa obsahu</a></p>
