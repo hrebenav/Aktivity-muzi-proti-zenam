@@ -272,7 +272,7 @@ function stranka_pridat() {
 
     <section class="karta">
       <h2><span class="dlazdice">${KATEGORIE.kresleni.ikona}</span>Kreslení</h2>
-      <p class="hint">Jedno slovo nebo sousloví na řádek. Můžeš jich vložit víc najednou.</p>
+      <p class="hint">Můžeš jich vložit víc najednou – každé na nový řádek nebo oddělené čárkou.</p>
       <textarea id="t-kresleni" rows="4" placeholder="Co se bude kreslit…"></textarea>
       <div class="row"><button class="btn tema-${tema}" data-pridat="kresleni">Přidat ke kreslení</button>
       <span class="moje" id="m-kresleni"></span></div>
@@ -280,7 +280,7 @@ function stranka_pridat() {
 
     <section class="karta">
       <h2><span class="dlazdice">${KATEGORIE.pantomima.ikona}</span>Pantomima</h2>
-      <p class="hint">Jedno slovo nebo sousloví na řádek. Hodí se činnosti a situace.</p>
+      <p class="hint">Hodí se činnosti a situace. Víc najednou odděl novým řádkem nebo čárkou.</p>
       <textarea id="t-pantomima" rows="4" placeholder="Co se bude předvádět…"></textarea>
       <div class="row"><button class="btn tema-${tema}" data-pridat="pantomima">Přidat k pantomimě</button>
       <span class="moje" id="m-pantomima"></span></div>
@@ -331,7 +331,7 @@ function stranka_pridat() {
       const ta = document.getElementById("t-" + k);
       const videno = new Set();
       const texty = ta.value
-        .split("\n")
+        .split(/[\n,;]/)
         .map((s) => s.replace(/\s+/g, " ").trim().slice(0, 100))
         .filter((s) => s && !videno.has(normalizuj(s)) && videno.add(normalizuj(s)));
       if (!texty.length) return toast("Napiš aspoň jedno slovo");
