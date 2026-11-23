@@ -15,8 +15,34 @@ create table if not exists public.polozky (
   check ((kategorie = 'popis') = (text is null))
 );
 
--- Duplicity: stejné slovo / obrázek může být v jedné kategorii od jednoho týmu jen jednou
-create unique index if not exists polozky_bez_duplicit on public.polozky (autor, kategorie, klic);
+-- ---------- Party ----------
+-- Každá parta má vlastní slova, obrázky i evidenci, co už padlo.
+
+create table if not exists public.parta (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  nazev text not null unique check (char_length(btrim(nazev)) between 1 and 40),
+  kod text not null unique check (kod ~ '^[a-z0-9-]{1,40}$')   -- do odkazů, např. #/pridat/hory
+);
+
+alter table public.polozky add column if not exists parta_id uuid references public.parta (id) on delete cascade;
+
+-- Převod z doby před partami: všechno, co už je v databázi, patří první partě
+do $$
+declare v_parta uuid;
+begin
+  if not exists (select 1 from public.parta) then
+    insert into public.parta (nazev, kod) values ('První parta', 'prvni');
+  end if;
+  select id into v_parta from public.parta order by created_at limit 1;
+  update public.polozky set parta_id = v_parta where parta_id is null;
+end $$;
+
+alter table public.polozky alter column parta_id set not null;
+
+-- Duplicity: stejné slovo / obrázek může být v jedné partě a kategorii od jednoho týmu jen jednou
+drop index if exists public.polozky_bez_duplicit;
+create unique index if not exists polozky_bez_duplicit_v_parte on public.polozky (parta_id, autor, kategorie, klic);
 
 alter table public.polozky enable row level security;
 
@@ -24,30 +50,43 @@ drop policy if exists "cteni" on public.polozky;
 drop policy if exists "pridavani" on public.polozky;
 drop policy if exists "oznaceni_pouziti" on public.polozky;
 drop policy if exists "mazani" on public.polozky;
+drop policy if exists "cteni" on public.parta;
+drop policy if exists "pridavani" on public.parta;
 
 create policy "cteni" on public.polozky for select to anon using (true);
 create policy "pridavani" on public.polozky for insert to anon with check (pouzito_at is null);
 create policy "oznaceni_pouziti" on public.polozky for update to anon using (true) with check (true);
 create policy "mazani" on public.polozky for delete to anon using (true);
 
+alter table public.parta enable row level security;
+create policy "cteni" on public.parta for select to anon using (true);
+create policy "pridavani" on public.parta for insert to anon with check (true);
+
 -- Práva pro veřejnou stránku. Upravovat jde jen sloupec „pouzito_at“ (slova samotná nikdo přepsat nemůže)
 grant usage on schema public to anon;
 grant select, insert, delete on public.polozky to anon;
+grant select, insert on public.parta to anon;
 revoke update on public.polozky from anon;
 grant update (pouzito_at) on public.polozky to anon;
 
+-- Staré verze funkcí (bez part) pryč
+drop function if exists public.pocty();
+drop function if exists public.vylosuj(text, text, boolean);
+drop function if exists public.nova_hra();
+
 -- Počty pro přehled (bez prozrazení obsahu)
-create or replace function public.pocty()
+create or replace function public.pocty(p_parta uuid)
 returns table (autor text, kategorie text, celkem bigint, zbyva bigint)
 language sql stable
 as $$
   select p.autor, p.kategorie, count(*), count(*) filter (where p.pouzito_at is null)
   from public.polozky p
+  where p.parta_id = p_parta
   group by p.autor, p.kategorie
 $$;
 
--- Náhodně vylosuje jednu položku a rovnou ji označí jako použitou
-create or replace function public.vylosuj(p_autor text, p_kategorie text, p_i_pouzite boolean default false)
+-- Náhodně vylosuje jednu položku dané party a rovnou ji označí jako použitou
+create or replace function public.vylosuj(p_parta uuid, p_autor text, p_kategorie text, p_i_pouzite boolean default false)
 returns setof public.polozky
 language sql volatile
 as $$
@@ -55,7 +94,8 @@ as $$
   set pouzito_at = now()
   where id = (
     select id from public.polozky
-    where autor = p_autor
+    where parta_id = p_parta
+      and autor = p_autor
       and kategorie = p_kategorie
       and (p_i_pouzite or pouzito_at is null)
     order by random()
@@ -64,14 +104,14 @@ as $$
   returning *
 $$;
 
--- Nová hra: všechno zase nepoužité
-create or replace function public.nova_hra()
+-- Nová hra pro partu: všechno je u ní zase nepoužité
+create or replace function public.nova_hra(p_parta uuid)
 returns void
 language sql volatile
 as $$
-  update public.polozky set pouzito_at = null where pouzito_at is not null
+  update public.polozky set pouzito_at = null where parta_id = p_parta and pouzito_at is not null
 $$;
 
-grant execute on function public.pocty() to anon;
-grant execute on function public.vylosuj(text, text, boolean) to anon;
-grant execute on function public.nova_hra() to anon;
+grant execute on function public.pocty(uuid) to anon;
+grant execute on function public.vylosuj(uuid, text, text, boolean) to anon;
+grant execute on function public.nova_hra(uuid) to anon;

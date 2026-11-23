@@ -136,27 +136,39 @@ function supabaseApi(client) {
     if (error) throw new Error(error.message);
   };
   return {
-    async pocty() {
-      const { data, error } = await client.rpc("pocty");
+    async party() {
+      const { data, error } = await client.from("parta").select("id, nazev, kod").order("created_at");
       chyba(error);
       return data;
     },
-    async pridejTexty(autor, kategorie, texty) {
-      const rows = texty.map((text) => ({ autor, kategorie, text, klic: normalizuj(text) }));
+    async novaParta(nazev, kod) {
+      const { data, error } = await client.from("parta").insert({ nazev, kod }).select("id, nazev, kod").single();
+      if (error?.code === "23505") throw new Error("Parta s tímhle jménem už existuje");
+      chyba(error);
+      return data;
+    },
+    async pocty(parta) {
+      const { data, error } = await client.rpc("pocty", { p_parta: parta });
+      chyba(error);
+      return data;
+    },
+    async pridejTexty(parta, autor, kategorie, texty) {
+      const rows = texty.map((text) => ({ parta_id: parta, autor, kategorie, text, klic: normalizuj(text) }));
       const { data, error } = await tbl()
-        .upsert(rows, { onConflict: "autor,kategorie,klic", ignoreDuplicates: true })
+        .upsert(rows, { onConflict: "parta_id,autor,kategorie,klic", ignoreDuplicates: true })
         .select("klic");
       chyba(error);
       return data.length;
     },
-    async pridejObrazek(autor, obrazek, klic) {
-      const { error } = await tbl().insert({ autor, kategorie: "popis", obrazek, klic });
+    async pridejObrazek(parta, autor, obrazek, klic) {
+      const { error } = await tbl().insert({ parta_id: parta, autor, kategorie: "popis", obrazek, klic });
       if (error?.code === "23505") return false;
       chyba(error);
       return true;
     },
-    async vylosuj(autor, kategorie, iPouzite = false) {
+    async vylosuj(parta, autor, kategorie, iPouzite = false) {
       const { data, error } = await client.rpc("vylosuj", {
+        p_parta: parta,
         p_autor: autor,
         p_kategorie: kategorie,
         p_i_pouzite: iPouzite,
@@ -164,12 +176,12 @@ function supabaseApi(client) {
       chyba(error);
       return data[0] ?? null;
     },
-    async novaHra() {
-      const { error } = await client.rpc("nova_hra");
+    async novaHra(parta) {
+      const { error } = await client.rpc("nova_hra", { p_parta: parta });
       chyba(error);
     },
-    async vsechno() {
-      const { data, error } = await tbl().select("*").order("created_at");
+    async vsechno(parta) {
+      const { data, error } = await tbl().select("*").eq("parta_id", parta).order("created_at");
       chyba(error);
       return data;
     },
@@ -186,10 +198,26 @@ function demoApi() {
   const load = () => lsGet(KEY, []);
   const save = (rows) => lsSet(KEY, rows);
   const id = () => Math.random().toString(36).slice(2);
+  const KEY_PARTY = "aktivity.demoParty";
   return {
-    async pocty() {
+    async party() {
+      let party = lsGet(KEY_PARTY, []);
+      if (!party.length) {
+        party = [{ id: id(), nazev: "První parta", kod: "prvni" }];
+        lsSet(KEY_PARTY, party);
+      }
+      return party;
+    },
+    async novaParta(nazev, kod) {
+      const party = await this.party();
+      if (party.some((p) => p.nazev === nazev || p.kod === kod)) throw new Error("Parta s tímhle jménem už existuje");
+      const p = { id: id(), nazev, kod };
+      lsSet(KEY_PARTY, [...party, p]);
+      return p;
+    },
+    async pocty(parta) {
       const out = {};
-      for (const r of load()) {
+      for (const r of load().filter((r) => r.parta_id === parta)) {
         const k = r.autor + "|" + r.kategorie;
         out[k] ??= { autor: r.autor, kategorie: r.kategorie, celkem: 0, zbyva: 0 };
         out[k].celkem++;
@@ -197,39 +225,41 @@ function demoApi() {
       }
       return Object.values(out);
     },
-    async pridejTexty(autor, kategorie, texty) {
+    async pridejTexty(parta, autor, kategorie, texty) {
       const rows = load();
       let n = 0;
       for (const text of texty) {
         const klic = normalizuj(text);
-        if (rows.some((r) => r.autor === autor && r.kategorie === kategorie && r.klic === klic)) continue;
-        rows.push({ id: id(), created_at: new Date().toISOString(), autor, kategorie, text, klic, pouzito_at: null });
+        if (rows.some((r) => r.parta_id === parta && r.autor === autor && r.kategorie === kategorie && r.klic === klic)) continue;
+        rows.push({ id: id(), parta_id: parta, created_at: new Date().toISOString(), autor, kategorie, text, klic, pouzito_at: null });
         n++;
       }
       save(rows);
       return n;
     },
-    async pridejObrazek(autor, obrazek, klic) {
+    async pridejObrazek(parta, autor, obrazek, klic) {
       const rows = load();
-      if (rows.some((r) => r.autor === autor && r.kategorie === "popis" && r.klic === klic)) return false;
-      rows.push({ id: id(), created_at: new Date().toISOString(), autor, kategorie: "popis", obrazek, klic, pouzito_at: null });
+      if (rows.some((r) => r.parta_id === parta && r.autor === autor && r.kategorie === "popis" && r.klic === klic)) return false;
+      rows.push({ id: id(), parta_id: parta, created_at: new Date().toISOString(), autor, kategorie: "popis", obrazek, klic, pouzito_at: null });
       save(rows);
       return true;
     },
-    async vylosuj(autor, kategorie, iPouzite = false) {
+    async vylosuj(parta, autor, kategorie, iPouzite = false) {
       const rows = load();
-      const pool = rows.filter((r) => r.autor === autor && r.kategorie === kategorie && (iPouzite || !r.pouzito_at));
+      const pool = rows.filter(
+        (r) => r.parta_id === parta && r.autor === autor && r.kategorie === kategorie && (iPouzite || !r.pouzito_at)
+      );
       if (!pool.length) return null;
       const r = pool[Math.floor(Math.random() * pool.length)];
       r.pouzito_at = new Date().toISOString();
       save(rows);
       return r;
     },
-    async novaHra() {
-      save(load().map((r) => ({ ...r, pouzito_at: null })));
+    async novaHra(parta) {
+      save(load().map((r) => (r.parta_id === parta ? { ...r, pouzito_at: null } : r)));
     },
-    async vsechno() {
-      return load();
+    async vsechno(parta) {
+      return load().filter((r) => r.parta_id === parta);
     },
     async smaz(rid) {
       save(load().filter((r) => r.id !== rid));
@@ -257,13 +287,14 @@ function stranka_pridat() {
   const jsemHolka = gender === "holka";
   const svet = jsemHolka ? "ženského" : "mužského";
   const hraji = jsemHolka ? "kluci" : "holky";
-  const moje = lsGet(LS_MOJE, {});
+  const klicMoje = LS_MOJE + "." + PARTA.id;
+  const moje = lsGet(klicMoje, {});
   const tema = jsemHolka ? "holky" : "kluci";
 
   $app.replaceChildren(
     h(`
     <header class="hero tema-${tema}">
-      <p class="eyebrow">Aktivity · holky vs. kluci</p>
+      <p class="eyebrow">Aktivity · ${esc(PARTA.nazev)}</p>
       <h1>Přidej věci ze ${svet} světa</h1>
       <p class="lead">Všechno, co sem napíšeš, budou kreslit, předvádět a popisovat <strong>${hraji}</strong>.
       Čím víc typicky „${jsemHolka ? "holčičí" : "klukovské"}“, tím větší legrace.</p>
@@ -303,7 +334,7 @@ function stranka_pridat() {
     </section>
 
     <p class="footer-note">Ostatní příspěvky neuvidíš, ať je hra překvapení.</p>
-    <p class="footer-note"><a href="#/prehled">${ic("graf")} Kolik už toho máme?</a></p>
+    <p class="footer-note"><a href="${odkaz("prehled")}">${ic("graf")} Kolik už toho máme?</a></p>
   `)
   );
 
@@ -316,7 +347,7 @@ function stranka_pridat() {
   ukazMoje();
   const zapocti = (k, n) => {
     moje[k] = (moje[k] || 0) + n;
-    lsSet(LS_MOJE, moje);
+    lsSet(klicMoje, moje);
     ukazMoje();
   };
 
@@ -337,7 +368,7 @@ function stranka_pridat() {
       if (!texty.length) return toast("Napiš aspoň jedno slovo");
       btn.disabled = true;
       try {
-        const pridano = await api.pridejTexty(gender, k, texty);
+        const pridano = await api.pridejTexty(PARTA.id, gender, k, texty);
         const dup = texty.length - pridano;
         ta.value = "";
         zapocti(k, pridano);
@@ -363,7 +394,7 @@ function stranka_pridat() {
       try {
         const [data, klic] = await Promise.all([zmensiObrazek(f), otisk(f)]);
         box.innerHTML = `<img src="${data}" alt="">`;
-        if (await api.pridejObrazek(gender, data, klic)) {
+        if (await api.pridejObrazek(PARTA.id, gender, data, klic)) {
           ok++;
           box.classList.remove("nahravam");
           box.insertAdjacentHTML("beforeend", `<span class="stav">${ic("check")}</span>`);
@@ -424,7 +455,7 @@ function vyberGender() {
   $app.replaceChildren(
     h(`
     <header class="hero">
-      <p class="eyebrow">Aktivity · holky vs. kluci</p>
+      <p class="eyebrow">Aktivity · ${esc(PARTA.nazev)}</p>
       <h1>Kdo jsi?</h1>
       <p class="lead">Hrajeme Aktivity holky proti klukům. Holky budou kreslit, předvádět a popisovat věci z mužského světa,
       kluci z ženského. A ty slova a obrázky vymýšlíte vy!</p>
@@ -449,20 +480,20 @@ async function stranka_prehled() {
   $app.replaceChildren(
     h(`
     <header class="hero">
-      <p class="eyebrow">Přehled</p>
+      <p class="eyebrow">Přehled · ${esc(PARTA.nazev)}</p>
       <h1>Kolik toho máme?</h1>
       <p class="lead">Jen počty, obsah zůstává tajný. Kde je málo, tam popožeň.</p>
     </header>
     <div id="pocty" class="pocty"><p class="hint">Načítám…</p></div>
     <nav class="nav">
-      ${UKAZAT_HRU ? `<a class="btn" href="#/hra">${ic("kostky")} Jdeme hrát</a>` : ""}
-      <a class="btn sekundarni" href="#/">${ic("plus")} Přidat slova</a>
+      ${UKAZAT_HRU ? `<a class="btn" href="${odkaz("hra")}">${ic("kostky")} Jdeme hrát</a>` : ""}
+      <a class="btn sekundarni" href="${odkaz("pridat")}">${ic("plus")} Přidat slova</a>
     </nav>
-    <p class="nenapadne"><a href="#/sprava">správa obsahu</a></p>
+    <p class="nenapadne"><a href="#/party">party</a> · <a href="${odkaz("sprava")}">správa obsahu</a></p>
   `)
   );
   try {
-    const rows = await api.pocty();
+    const rows = await api.pocty(PARTA.id);
     const get = (autor, k) => rows.find((r) => r.autor === autor && r.kategorie === k) || { celkem: 0, zbyva: 0 };
     const sloupec = (autor) => {
       const holky = autor === "holka";
@@ -500,7 +531,7 @@ function stranka_hra() {
     $app.replaceChildren(
       h(`
       <header class="hero kompakt">
-        <p class="eyebrow">Hra</p>
+        <p class="eyebrow">Hra · ${esc(PARTA.nazev)}</p>
         <h1>Kdo je na tahu?</h1>
       </header>
       <div class="volba">
@@ -518,7 +549,7 @@ function stranka_hra() {
           .join("")}
       </div>
       <nav class="nav">
-        <a class="btn sekundarni" href="#/prehled">${ic("graf")} Přehled</a>
+        <a class="btn sekundarni" href="${odkaz("prehled")}">${ic("graf")} Přehled</a>
         <button class="btn sekundarni" id="nova-hra">${ic("znovu")} Nová hra</button>
       </nav>
     `)
@@ -537,9 +568,9 @@ function stranka_hra() {
       };
     });
     document.getElementById("nova-hra").onclick = async () => {
-      if (!confirm("Začít novou hru? Všechna už použitá slova a obrázky se vrátí do hry.")) return;
+      if (!confirm(`Začít novou hru pro partu „${PARTA.nazev}“? Všechna už použitá slova a obrázky se vrátí do hry.`)) return;
       try {
-        await api.novaHra();
+        await api.novaHra(PARTA.id);
         toast("Nová hra – všechno je zase ve hře");
       } catch (e) {
         toast("Nepovedlo se: " + e.message);
@@ -550,7 +581,7 @@ function stranka_hra() {
   const losuj = async (iPouzite = false) => {
     $app.replaceChildren(h(`<div class="losovani"><div class="kostka">${ic("kostky")}</div><p>Losuju…</p></div>`));
     try {
-      polozka = await api.vylosuj(TYM[tym].autor, kategorie, iPouzite);
+      polozka = await api.vylosuj(PARTA.id, TYM[tym].autor, kategorie, iPouzite);
     } catch (e) {
       toast("Nepovedlo se vylosovat: " + e.message);
       return render();
@@ -633,7 +664,7 @@ function stranka_sprava() {
       <p>Tady uvidíš všechna slova a obrázky, které ostatní přidali. Pokud hraješ, možná se nechceš dívat.</p>
       <div class="row">
         <button class="btn" id="ukaz">Ukázat obsah</button>
-        <a class="btn sekundarni" href="#/prehled">Zpět</a>
+        <a class="btn sekundarni" href="${odkaz("prehled")}">Zpět</a>
       </div>
     </div>
   `)
@@ -645,7 +676,7 @@ async function nactiSpravu() {
   $app.replaceChildren(h(`<p class="hint">Načítám…</p>`));
   let rows;
   try {
-    rows = await api.vsechno();
+    rows = await api.vsechno(PARTA.id);
   } catch (e) {
     $app.innerHTML = `<p class="chyba">Nepovedlo se načíst: ${esc(e.message)}</p>`;
     return;
@@ -673,12 +704,12 @@ async function nactiSpravu() {
   $app.replaceChildren(
     h(`
     <header class="hero kompakt">
-      <p class="eyebrow">Správa obsahu</p>
+      <p class="eyebrow">Správa obsahu · ${esc(PARTA.nazev)}</p>
       <h1>Všechno, co je ve hře</h1>
       <p class="hint">Přeškrtnuté už ve hře padlo.</p>
     </header>
     ${sekce.join("")}
-    <nav class="nav"><a class="btn sekundarni" href="#/prehled">Zpět na přehled</a></nav>
+    <nav class="nav"><a class="btn sekundarni" href="${odkaz("prehled")}">Zpět na přehled</a></nav>
   `)
   );
   $app.querySelectorAll(".smazat").forEach((b) => {
@@ -694,21 +725,119 @@ async function nactiSpravu() {
   });
 }
 
+// ---------- Stránka: party (každá má vlastní slova i hru) ----------
+
+function plnyOdkaz(stranka, p) {
+  return location.origin + location.pathname + odkaz(stranka, p);
+}
+
+async function kopiruj(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Odkaz zkopírován");
+  } catch {
+    prompt("Zkopíruj odkaz:", text);
+  }
+}
+
+async function stranka_party() {
+  $app.replaceChildren(h(`<p class="hint">Načítám…</p>`));
+  let party;
+  try {
+    party = await api.party();
+  } catch (e) {
+    $app.innerHTML = `<p class="chyba">Nepovedlo se načíst party: ${esc(e.message)}</p>`;
+    return;
+  }
+  $app.replaceChildren(
+    h(`
+    <header class="hero kompakt">
+      <p class="eyebrow">Party</p>
+      <h1>Kdo s kým hraje</h1>
+      <p class="lead">Každá parta má vlastní slova, obrázky i hru. Kamarádům pošli odkaz na přidávání jejich party.</p>
+    </header>
+    ${party
+      .map(
+        (p, i) => `
+      <section class="karta parta-karta">
+        <h2>${esc(p.nazev)}</h2>
+        <div class="row">
+          <button class="btn" data-kopiruj="${i}">${ic("plus")} Zkopírovat odkaz pro kamarády</button>
+        </div>
+        <div class="row">
+          <a class="btn sekundarni" href="${odkaz("prehled", p)}">${ic("graf")} Přehled</a>
+          <a class="btn sekundarni" href="${odkaz("hra", p)}">${ic("kostky")} Hra</a>
+        </div>
+      </section>`
+      )
+      .join("")}
+    <form class="karta nova-parta" id="nova-parta">
+      <h2>${ic("plus")} Nová parta</h2>
+      <p class="hint">Začne úplně od nuly, s vlastními slovy a obrázky.</p>
+      <div class="row">
+        <input id="nazev-party" maxlength="40" placeholder="Jméno party" autocomplete="off" required>
+        <button class="btn">Založit</button>
+      </div>
+    </form>
+  `)
+  );
+  $app.querySelectorAll("[data-kopiruj]").forEach((b) => {
+    b.onclick = () => kopiruj(plnyOdkaz("pridat", party[b.dataset.kopiruj]));
+  });
+  document.getElementById("nova-parta").onsubmit = async (e) => {
+    e.preventDefault();
+    const nazev = document.getElementById("nazev-party").value.trim().replace(/\s+/g, " ");
+    if (!nazev) return;
+    const zaklad = normalizuj(nazev).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 34) || "parta";
+    let kod = zaklad;
+    for (let i = 2; party.some((p) => p.kod === kod); i++) kod = `${zaklad}-${i}`;
+    try {
+      await api.novaParta(nazev, kod);
+      toast(`Parta „${nazev}“ založena`);
+      stranka_party();
+    } catch (err) {
+      toast("Nepovedlo se: " + err.message);
+    }
+  };
+}
+
 // ---------- Router ----------
+// Adresy: #/pridat/<kod>, #/prehled/<kod>, #/hra/<kod>, #/sprava/<kod>, #/party.
+// Bez kódu party se použije první parta (aby fungovaly původní odkazy).
+
+let PARTA = null;
+
+function odkaz(stranka, p = PARTA) {
+  return `#/${stranka}/${p.kod}`;
+}
 
 const ROUTY = {
   "": stranka_pridat,
+  pridat: stranka_pridat,
   prehled: stranka_prehled,
   hra: stranka_hra,
   sprava: stranka_sprava,
 };
 
-function route() {
+async function route() {
   pasteHandler = null;
   document.getElementById("toast").classList.remove("show");
-  const cesta = location.hash.replace(/^#\/?/, "");
-  (ROUTY[cesta] || stranka_pridat)();
   window.scrollTo(0, 0);
+  const [stranka = "", kod] = location.hash.replace(/^#\/?/, "").split("/");
+  if (stranka === "party") return stranka_party();
+  let party;
+  try {
+    party = await api.party();
+  } catch (e) {
+    $app.innerHTML = `<p class="chyba">Nepovedlo se načíst: ${esc(e.message)}</p>`;
+    return;
+  }
+  PARTA = kod ? party.find((p) => p.kod === kod) : party[0];
+  if (!PARTA) {
+    $app.innerHTML = `<p class="chyba">Tahle parta neexistuje. Zkontroluj odkaz.</p>`;
+    return;
+  }
+  (ROUTY[stranka] || stranka_pridat)();
 }
 
 await initApi();
