@@ -288,7 +288,8 @@ function stranka_pridat() {
   const svet = jsemHolka ? "ženského" : "mužského";
   const hraji = jsemHolka ? "kluci" : "holky";
   const klicMoje = LS_MOJE + "." + PARTA.id;
-  const moje = lsGet(klicMoje, {});
+  // Počty z doby před partami patří první partě
+  const moje = lsGet(klicMoje, null) ?? (PARTA.kod === "prvni" ? lsGet(LS_MOJE, {}) : {});
   const tema = jsemHolka ? "holky" : "kluci";
 
   $app.replaceChildren(
